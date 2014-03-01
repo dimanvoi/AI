@@ -1,0 +1,5 @@
+c:\documents and settings\dima\my documents\visual studio 2010\Projects\COMP472-A2\COMP472-A2\bin\Debug\COMP472-A2.exe
+c:\documents and settings\dima\my documents\visual studio 2010\Projects\COMP472-A2\COMP472-A2\bin\Debug\COMP472-A2.pdb
+c:\documents and settings\dima\my documents\visual studio 2010\Projects\COMP472-A2\COMP472-A2\obj\x86\Debug\ResolveAssemblyReference.cache
+c:\documents and settings\dima\my documents\visual studio 2010\Projects\COMP472-A2\COMP472-A2\obj\x86\Debug\COMP472-A2.exe
+c:\documents and settings\dima\my documents\visual studio 2010\Projects\COMP472-A2\COMP472-A2\obj\x86\Debug\COMP472-A2.pdb
