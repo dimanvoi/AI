@@ -7,52 +7,65 @@ using System.IO;
 
 namespace COMP472_A2
 {
-    public enum enumLanguage { English, French, Spanish }
+    public enum enumLanguage { english, french, spanish }
 
     class Corpus
     {
-        // language name used for printing
-        public string sLanguage { get; private set; }
+        private string m_language;
 
         // language-specific bigram dictionary, populated according to the text provided
-        private SortedDictionary<string, double> bigramDictionary;
+        private SortedDictionary<string, int> m_bigramDictionary;
 
-        // empty dictionary containing all bigrams. each language makes a copy and populates it
-        private static SortedDictionary<string, double> emptyBigramDictionary;
-        private static int nbBigramTypes = 28 * 28;
+        // empty dictionary of all bigrams. each language makes a copy and populates it
+        private static SortedDictionary<string, int> s_emptyBigramDictionary;
         
+        // 26 letters, whitespace, and punctuations (all are treated as one character)
+        private static int s_nbBigramTypes = 28 * 28;
+
         public Corpus(enumLanguage language)
         {
-            if (emptyBigramDictionary == null)
+            if (s_emptyBigramDictionary == null)
             {
+                // create an empty dictionary of all bigrams (28 * 28)
                 InitializeEmptyBigramDictionary();
             }
 
-            sLanguage = language.ToString();
-            PopulateBigramDictionary(File.ReadAllText(sLanguage.ToLower() + ".txt"));
+            m_language = language.ToString();
+            // make a language-specific copy of bigram dictionary, parse text, and compute frequencies
+            PopulateBigramDictionary(File.ReadAllText(m_language + ".txt"));
         }
 
-        public static void FreeEmptyDictionary()
+        // compute probability of bigram in a training corpus, smooth, and print result
+        public void TestBigram(string bigramToTest, ref double probabilitySoFar)
         {
-            emptyBigramDictionary = null;
+            double delta = 0.5;
+            double probability = (m_bigramDictionary[bigramToTest] + delta) / 
+                                 (m_bigramDictionary.Count + delta * s_nbBigramTypes);
+            probabilitySoFar += Math.Log10(probability);
+
+            string joinProbability = "P(" + (Char.IsWhiteSpace(bigramToTest[0]) ? "_" : bigramToTest[0].ToString()) +
+                                     "," + (Char.IsWhiteSpace(bigramToTest[1]) ? "_" : bigramToTest[1].ToString()) + ")";
+
+            string languageName = m_language.ToUpper() + ":";
+            if (m_language == "french")
+                m_language += " "; // print exta space for aesthetic alignment
+
+            Console.WriteLine("{0} {1} = {2:e11} ===> log prob of sequence so far: {3:f4}",
+                        languageName, joinProbability.ToUpper(), probability, probabilitySoFar);
         }
 
-        public double TestBigram(string bigram)
+        public bool DictionaryContainsBigram(string bigram)
         {
-            return bigramDictionary.ContainsKey(bigram) ?
-                bigramDictionary[bigram] / ComputeProbabilityFormulaDenominator(bigram) : 0.0;
-        }
-
-        private double ComputeProbabilityFormulaDenominator(string bigram)
-        {
-            return bigramDictionary[bigram] + nbBigramTypes * 0.5;
+            return m_bigramDictionary.ContainsKey(bigram);
         }
 
         private static void InitializeEmptyBigramDictionary()
         {
-            emptyBigramDictionary = new SortedDictionary<string, double>();
+            s_emptyBigramDictionary = new SortedDictionary<string, int>();
             
             AddNewBigram(' ', '*');
+            AddNewBigram('*', '*');
+            AddNewBigram(' ', ' ');
 
             for (char a = 'a'; a <= 'z'; a++)
             {
@@ -66,24 +79,25 @@ namespace COMP472_A2
             }
         }
 
-        private static bool AddNewBigram(char a, char b)
+        public static void FreeEmptyDictionary()
         {
-            bool newBigramAdded = false;
+            s_emptyBigramDictionary = null;
+        }
+
+        // helper method to populate bigram dictionary
+        private static void AddNewBigram(char a, char b)
+        {
             string ab = a.ToString() + b.ToString();
-            if (!emptyBigramDictionary.ContainsKey(ab))
+            if (!s_emptyBigramDictionary.ContainsKey(ab))
             {
-                emptyBigramDictionary.Add(ab, 0.0);
-                newBigramAdded |= true ;
+                s_emptyBigramDictionary.Add(ab, 0);
             }
             
             string ba = b.ToString() + a.ToString();
-            if (!emptyBigramDictionary.ContainsKey(ba))
+            if (!s_emptyBigramDictionary.ContainsKey(ba))
             {
-                emptyBigramDictionary.Add(ba, 0.0);
-                newBigramAdded |= true;
+                s_emptyBigramDictionary.Add(ba, 0);
             }
-
-            return newBigramAdded;
         }
 
         private void PopulateBigramDictionary(string sInput)
@@ -93,28 +107,29 @@ namespace COMP472_A2
             sbProcessor.Replace('\r', ' ');
             sbProcessor.Replace('\n', ' ');
 
-            // convert punctuation into '*'
-            sbProcessor = new StringBuilder(Regex.Replace(sbProcessor.ToString(), @"[\.|,|!|?|-|:|""|'|_]", "*"));
+            // convert punctuation into '*', get rid of spaces between ponctuations
+            sbProcessor = new StringBuilder(Regex.Replace(sbProcessor.ToString(), @"[\.|,|!|\?|\-|:|""|'|_]", "*"));
+            sbProcessor = new StringBuilder(Regex.Replace(sbProcessor.ToString(), @"\*\s\*", "**"));
             sbProcessor = new StringBuilder(Regex.Replace(sbProcessor.ToString(), @"\*+", "*"));
-            
+                        
             string sText = sbProcessor.ToString().ToLower();
             sbProcessor.Clear();
 
-            bigramDictionary = new SortedDictionary<string, double>();
-            foreach (string key in emptyBigramDictionary.Keys)
+            m_bigramDictionary = new SortedDictionary<string, int>();
+            foreach (string key in s_emptyBigramDictionary.Keys)
             {
-                bigramDictionary.Add(key, 0.5);
+                m_bigramDictionary.Add(key, 0);
             }
 
-            // parse entire text and update stats
+            // parse text and fill frequencies of bigrams
             for (int i = 0; i < sText.Length - 1; i++)
             {
                 sbProcessor.Append(sText[i]);
                 sbProcessor.Append(sText[i + 1]);
 
-                if (bigramDictionary.ContainsKey(sbProcessor.ToString()))
+                if (m_bigramDictionary.ContainsKey(sbProcessor.ToString()))
                 {
-                    bigramDictionary[sbProcessor.ToString()]++;
+                    m_bigramDictionary[sbProcessor.ToString()]++;
                 }
                 sbProcessor.Clear();
             }
