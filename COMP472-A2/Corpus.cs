@@ -7,15 +7,19 @@ using System.IO;
 
 namespace COMP472_A2
 {
-    public enum enumLanguage { english, french, spanish }
+    public enum enumLanguage { English, French, Spanish }
 
     class Corpus
     {
+        // language name used for printing
+        public string sLanguage { get; private set; }
+
         // language-specific bigram dictionary, populated according to the text provided
         private SortedDictionary<string, double> bigramDictionary;
 
         // empty dictionary containing all bigrams. each language makes a copy and populates it
         private static SortedDictionary<string, double> emptyBigramDictionary;
+        private static int nbBigramTypes = 28 * 28;
         
         public Corpus(enumLanguage language)
         {
@@ -23,8 +27,9 @@ namespace COMP472_A2
             {
                 InitializeEmptyBigramDictionary();
             }
-            
-            PopulateBigramDictionary(File.ReadAllText(language.ToString() + ".txt"));
+
+            sLanguage = language.ToString();
+            PopulateBigramDictionary(File.ReadAllText(sLanguage.ToLower() + ".txt"));
         }
 
         public static void FreeEmptyDictionary()
@@ -32,35 +37,53 @@ namespace COMP472_A2
             emptyBigramDictionary = null;
         }
 
-        private void InitializeEmptyBigramDictionary()
+        public double TestBigram(string bigram)
+        {
+            return bigramDictionary.ContainsKey(bigram) ?
+                bigramDictionary[bigram] / ComputeProbabilityFormulaDenominator(bigram) : 0.0;
+        }
+
+        private double ComputeProbabilityFormulaDenominator(string bigram)
+        {
+            return bigramDictionary[bigram] + nbBigramTypes * 0.5;
+        }
+
+        private static void InitializeEmptyBigramDictionary()
         {
             emptyBigramDictionary = new SortedDictionary<string, double>();
+            
+            AddNewBigram(' ', '*');
 
             for (char a = 'a'; a <= 'z'; a++)
             {
                 AddNewBigram(a, ' ');
-
+                AddNewBigram(a, '*');
+                
                 for (char b = 'a'; b <= 'z'; b++)
                 {
                     AddNewBigram(a, b);
                 }
             }
-            //TODO: Do we ignore punctuation? '.' and ',' might be relevant
         }
 
-        private void AddNewBigram(char a, char b)
+        private static bool AddNewBigram(char a, char b)
         {
+            bool newBigramAdded = false;
             string ab = a.ToString() + b.ToString();
             if (!emptyBigramDictionary.ContainsKey(ab))
             {
                 emptyBigramDictionary.Add(ab, 0.0);
+                newBigramAdded |= true ;
             }
             
             string ba = b.ToString() + a.ToString();
             if (!emptyBigramDictionary.ContainsKey(ba))
             {
                 emptyBigramDictionary.Add(ba, 0.0);
+                newBigramAdded |= true;
             }
+
+            return newBigramAdded;
         }
 
         private void PopulateBigramDictionary(string sInput)
@@ -70,6 +93,10 @@ namespace COMP472_A2
             sbProcessor.Replace('\r', ' ');
             sbProcessor.Replace('\n', ' ');
 
+            // convert punctuation into '*'
+            sbProcessor = new StringBuilder(Regex.Replace(sbProcessor.ToString(), @"[\.|,|!|?|-|:|""|'|_]", "*"));
+            sbProcessor = new StringBuilder(Regex.Replace(sbProcessor.ToString(), @"\*+", "*"));
+            
             string sText = sbProcessor.ToString().ToLower();
             sbProcessor.Clear();
 
