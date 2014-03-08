@@ -40,9 +40,10 @@ namespace COMP472_A2
                     firstChar = inputSentence[i];
                     secondChar = inputSentence[i + 1];
                     bigramToTest = firstChar.ToString() + secondChar.ToString();
-                    Console.WriteLine("\nBIGRAM: " + bigramToTest);
-
-                    bigramToTest = Regex.Replace(bigramToTest, @"[\.|,|!|?|-|:|""|'|_]", "*");
+                    bigramToTest = Regex.Replace(bigramToTest, @"[\.|,|!|\?|\-|:|""|'|_]", "*");
+                    Console.WriteLine("\nBIGRAM: " +
+                                      (Char.IsWhiteSpace(bigramToTest[0]) ? "_" : bigramToTest[0].ToString()) +
+                                      (Char.IsWhiteSpace(bigramToTest[1]) ? "_" : bigramToTest[1].ToString()));
 
                     if (!english.DictionaryContainsBigram(bigramToTest))
                     {
@@ -56,9 +57,10 @@ namespace COMP472_A2
                     }
                 }
 
-                if (probabilityEnglish != 0)
+                if (probabilityEnglish != 0) // if the sentence contained valid bigrams in any of the languages
                 {
                     Console.Write("The sentence is ");
+                    
                     if (probabilityEnglish > probabilityFrench)
                     {
                         if (probabilityEnglish > probabilitySpanish)
@@ -79,7 +81,7 @@ namespace COMP472_A2
                 {
                     Console.Write("\nWould you like to enter another sentence? (y\\n): ");
                     answer = Console.ReadLine();
-                } while (!answer.StartsWith("n") && !answer.StartsWith("y"));
+                } while (!answer.ToLower().StartsWith("n") && !answer.ToLower().StartsWith("y"));
 
                 if (answer[0] == 'n')
                     done = true;

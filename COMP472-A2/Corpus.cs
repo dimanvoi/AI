@@ -16,11 +16,14 @@ namespace COMP472_A2
         // language-specific bigram dictionary, populated according to the text provided
         private SortedDictionary<string, int> m_bigramDictionary;
 
-        // empty dictionary of all bigrams. each language makes a copy and populates it
+        // empty dictionary of all bigrams. each language makes its own copy and populates it
         private static SortedDictionary<string, int> s_emptyBigramDictionary;
         
         // 26 letters, whitespace, and punctuations (all are treated as one character)
         private static int s_nbBigramTypes = 28 * 28;
+        
+        // used for smoothing
+        private static double delta = 0.5;
 
         public Corpus(enumLanguage language)
         {
@@ -31,27 +34,37 @@ namespace COMP472_A2
             }
 
             m_language = language.ToString();
-            // make a language-specific copy of bigram dictionary, parse text, and compute frequencies
+
+            // make a language-specific copy of the empty bigram dictionary, parse training text, and compute frequencies
             PopulateBigramDictionary(File.ReadAllText(m_language + ".txt"));
         }
 
         // compute probability of bigram in a training corpus, smooth, and print result
         public void TestBigram(string bigramToTest, ref double probabilitySoFar)
         {
-            double delta = 0.5;
+            string firstChar = bigramToTest[0].ToString();
+            double sumOfBigramStartingWithFirstChar = 0.0;
+            for (char secondChar = 'a'; secondChar <= 'z'; secondChar++)
+            {
+                sumOfBigramStartingWithFirstChar += m_bigramDictionary[firstChar + secondChar] + delta;
+            }
+            
+            sumOfBigramStartingWithFirstChar += m_bigramDictionary[firstChar + '*'] + delta;
+            sumOfBigramStartingWithFirstChar += m_bigramDictionary[firstChar + ' '] + delta;
+
             double probability = (m_bigramDictionary[bigramToTest] + delta) / 
-                                 (m_bigramDictionary.Count + delta * s_nbBigramTypes);
+                                 (sumOfBigramStartingWithFirstChar + delta * s_nbBigramTypes);
+            
             probabilitySoFar += Math.Log10(probability);
 
-            string joinProbability = "P(" + (Char.IsWhiteSpace(bigramToTest[0]) ? "_" : bigramToTest[0].ToString()) +
-                                     "," + (Char.IsWhiteSpace(bigramToTest[1]) ? "_" : bigramToTest[1].ToString()) + ")";
+            string conditionalProbability = "P(" + (Char.IsWhiteSpace(bigramToTest[1]) ? "_" : bigramToTest[1].ToString()) +
+                                            "|"  + (Char.IsWhiteSpace(bigramToTest[0]) ? "_" : bigramToTest[0].ToString()) + ")";
 
-            string languageName = m_language.ToUpper() + ":";
-            if (m_language == "french")
-                m_language += " "; // print exta space for aesthetic alignment
-
+                                                        // print exta space for aesthetic alignment
+            string languageName = m_language.ToUpper() + (m_language == "french" ? " :" : ":");
+            
             Console.WriteLine("{0} {1} = {2:e11} ===> log prob of sequence so far: {3:f4}",
-                        languageName, joinProbability.ToUpper(), probability, probabilitySoFar);
+                        languageName, conditionalProbability.ToUpper(), probability, probabilitySoFar);
         }
 
         public bool DictionaryContainsBigram(string bigram)
